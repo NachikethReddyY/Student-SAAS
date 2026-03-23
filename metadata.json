@@ -1,0 +1,5 @@
+{
+  "name": "Student Assistant System (SAS)",
+  "description": "A comprehensive dashboard for students to manage modules, assignments, exams, and notes with Google Workspace integration.",
+  "requestFramePermissions": []
+}

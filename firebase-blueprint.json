@@ -1,0 +1,75 @@
+{
+  "entities": {
+    "Module": {
+      "title": "Module",
+      "description": "An academic module or course.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "description": "The module code, e.g., CS101." },
+        "name": { "type": "string", "description": "The full name of the module." },
+        "credits": { "type": "number", "description": "The number of academic credits." },
+        "color": { "type": "string", "description": "The theme color for the module." },
+        "semester": { "type": "string", "enum": ["sem1", "sem2"], "description": "The semester the module belongs to." },
+        "description": { "type": "string", "description": "A brief description of the module." },
+        "icon": { "type": "string", "description": "The icon name for the module." }
+      },
+      "required": ["code", "name", "credits", "color"]
+    },
+    "Deadline": {
+      "title": "Deadline",
+      "description": "An assignment, exam, or quiz deadline.",
+      "type": "object",
+      "properties": {
+        "moduleId": { "type": "string", "description": "The ID of the associated module." },
+        "title": { "type": "string", "description": "The title of the deadline." },
+        "dueDate": { "type": "string", "format": "date", "description": "The due date in YYYY-MM-DD format." },
+        "type": { "type": "string", "enum": ["assignment", "exam", "quiz"], "description": "The type of deadline." },
+        "status": { "type": "string", "enum": ["pending", "in-progress", "completed"], "description": "The current status." },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"], "description": "The priority level." },
+        "description": { "type": "string", "description": "Optional description." }
+      },
+      "required": ["moduleId", "title", "dueDate", "type", "status", "priority"]
+    },
+    "Note": {
+      "title": "Note",
+      "description": "A study note or general note.",
+      "type": "object",
+      "properties": {
+        "moduleId": { "type": "string", "description": "Optional associated module ID." },
+        "title": { "type": "string", "description": "The title of the note." },
+        "content": { "type": "string", "description": "The content of the note." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "The last updated timestamp." }
+      },
+      "required": ["title", "content", "updatedAt"]
+    },
+    "InboxItem": {
+      "title": "InboxItem",
+      "description": "A quick capture item in the inbox.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "description": "The text of the inbox item." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The creation timestamp." },
+        "processed": { "type": "boolean", "description": "Whether the item has been processed." }
+      },
+      "required": ["text", "createdAt", "processed"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/modules/{moduleId}": {
+      "schema": "Module",
+      "description": "User's academic modules."
+    },
+    "/users/{userId}/deadlines/{deadlineId}": {
+      "schema": "Deadline",
+      "description": "User's deadlines and assignments."
+    },
+    "/users/{userId}/notes/{noteId}": {
+      "schema": "Note",
+      "description": "User's study notes."
+    },
+    "/users/{userId}/inbox/{inboxId}": {
+      "schema": "InboxItem",
+      "description": "User's quick capture inbox items."
+    }
+  }
+}
