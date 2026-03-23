@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Module, Deadline, Note, InboxItem, SASState } from './types';
+import { Module, Deadline, Note, InboxItem, SASState, Event } from './types';
 import { 
   db, 
   auth, 

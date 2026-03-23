@@ -127,12 +127,31 @@ service cloud.firestore {
              data.processed is bool;
     }
 
+    function isValidEvent(data) {
+      return hasRequiredFields(['title', 'date']) &&
+             hasOnlyAllowedFields(['id', 'title', 'date', 'startTime', 'endTime', 'location', 'description', 'googleEventId']) &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 100 &&
+             isValidDateString(data.date) &&
+             (!('startTime' in data) || data.startTime is string) &&
+             (!('endTime' in data) || data.endTime is string) &&
+             (!('location' in data) || (data.location is string && data.location.size() <= 200)) &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 1000)) &&
+             (!('googleEventId' in data) || data.googleEventId is string);
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
 
     match /users/{userId} {
       allow read, write: if isOwner(userId) || isAdmin();
+
+      match /events/{eventId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if (isOwner(userId) || isAdmin()) && isValidEvent(request.resource.data);
+        allow update: if (isOwner(userId) || isAdmin()) && isValidEvent(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
 
       match /modules/{moduleId} {
         allow read: if isOwner(userId) || isAdmin();

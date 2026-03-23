@@ -54,9 +54,21 @@ export interface InboxItem {
   processed: boolean;
 }
 
+export interface Event {
+  id: string;
+  title: string;
+  date: string;
+  startTime?: string;
+  endTime?: string;
+  location?: string;
+  description?: string;
+  googleEventId?: string;
+}
+
 export interface SASState {
   modules: Module[];
   deadlines: Deadline[];
   notes: Note[];
   inbox: InboxItem[];
+  events: Event[];
 }
