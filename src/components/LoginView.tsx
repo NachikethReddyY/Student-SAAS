@@ -3,7 +3,7 @@ import { useSAS } from '../context';
 import { motion } from 'motion/react';
 
 export default function LoginView() {
-  const { login } = useSAS();
+  const { login, error } = useSAS();
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-50 p-6">
@@ -22,6 +22,12 @@ export default function LoginView() {
             Your academic command center. Sign in to sync your modules, assignments, and notes.
           </p>
         </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-2xl text-sm font-medium">
+            {error}
+          </div>
+        )}
 
         <button
           onClick={login}

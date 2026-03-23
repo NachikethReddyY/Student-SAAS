@@ -75,6 +75,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 interface SASContextType extends SASState {
   user: User | null;
   loading: boolean;
+  error: string | null;
   login: () => Promise<void>;
   logout: () => Promise<void>;
   addModule: (module: Omit<Module, 'id'>) => void;
@@ -96,6 +97,7 @@ const SASContext = createContext<SASContextType | undefined>(undefined);
 export function SASProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [state, setState] = useState<SASState>({
     modules: [],
     deadlines: [],
@@ -150,10 +152,12 @@ export function SASProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const login = async () => {
+    setError(null);
     try {
       await signInWithPopup(auth, googleProvider);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
+      setError(error.message || 'An unknown error occurred during login.');
     }
   };
 
@@ -303,6 +307,7 @@ export function SASProvider({ children }: { children: ReactNode }) {
       ...state,
       user,
       loading,
+      error,
       login,
       logout,
       addModule,
