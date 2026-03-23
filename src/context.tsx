@@ -87,6 +87,9 @@ interface SASContextType extends SASState {
   updateDeadline: (id: string, deadline: Partial<Omit<Deadline, 'id'>>) => void;
   deleteDeadline: (id: string) => void;
   updateDeadlineStatus: (id: string, status: Deadline['status']) => void;
+  addEvent: (event: Omit<Event, 'id'>) => void;
+  updateEvent: (id: string, event: Partial<Omit<Event, 'id'>>) => void;
+  deleteEvent: (id: string) => void;
   addNote: (note: Omit<Note, 'id' | 'updatedAt'>) => void;
   updateNote: (id: string, note: Partial<Omit<Note, 'id' | 'updatedAt'>>) => void;
   deleteNote: (id: string) => void;
@@ -106,6 +109,7 @@ export function SASProvider({ children }: { children: ReactNode }) {
     deadlines: [],
     notes: [],
     inbox: [],
+    events: [],
   });
 
   useEffect(() => {
@@ -118,7 +122,7 @@ export function SASProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!user) {
-      setState({ modules: [], deadlines: [], notes: [], inbox: [] });
+      setState({ modules: [], deadlines: [], notes: [], inbox: [], events: [] });
       return;
     }
 
@@ -146,11 +150,18 @@ export function SASProvider({ children }: { children: ReactNode }) {
       setState(prev => ({ ...prev, inbox }));
     }, (error) => handleFirestoreError(error, OperationType.LIST, inboxPath));
 
+    const eventsPath = `users/${user.uid}/events`;
+    const unsubEvents = onSnapshot(collection(db, eventsPath), (snapshot) => {
+      const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Event));
+      setState(prev => ({ ...prev, events }));
+    }, (error) => handleFirestoreError(error, OperationType.LIST, eventsPath));
+
     return () => {
       unsubModules();
       unsubDeadlines();
       unsubNotes();
       unsubInbox();
+      unsubEvents();
     };
   }, [user]);
 
@@ -205,9 +216,6 @@ export function SASProvider({ children }: { children: ReactNode }) {
     const path = `users/${user.uid}/modules/${id}`;
     try {
       await deleteDoc(doc(db, path));
-      // Deadlines and notes cleanup should ideally be handled by a cloud function or batch,
-      // but for this applet we'll just delete the module. 
-      // Security rules will prevent access to orphaned data.
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, path);
     }
@@ -218,7 +226,6 @@ export function SASProvider({ children }: { children: ReactNode }) {
     const path = `users/${user.uid}/deadlines`;
     try {
       let googleEventId: string | undefined;
-      
       if (accessToken) {
         try {
           const event = await createCalendarEvent(accessToken, {
@@ -232,11 +239,7 @@ export function SASProvider({ children }: { children: ReactNode }) {
           console.error('Failed to sync with Google Calendar:', error);
         }
       }
-
-      await addDoc(collection(db, path), {
-        ...deadline,
-        googleEventId
-      });
+      await addDoc(collection(db, path), { ...deadline, googleEventId });
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, path);
     }
@@ -290,6 +293,71 @@ export function SASProvider({ children }: { children: ReactNode }) {
       await updateDoc(doc(db, path), { status });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, path);
+    }
+  };
+
+  const addEvent = async (eventData: Omit<Event, 'id'>) => {
+    if (!user) return;
+    const path = `users/${user.uid}/events`;
+    try {
+      let googleEventId: string | undefined;
+      if (accessToken) {
+        try {
+          const calendarEvent = await createCalendarEvent(accessToken, {
+            summary: eventData.title,
+            description: eventData.description || '',
+            start: { date: eventData.date },
+            end: { date: eventData.date },
+          });
+          googleEventId = calendarEvent.id;
+        } catch (error) {
+          console.error('Failed to sync event with Google Calendar:', error);
+        }
+      }
+      await addDoc(collection(db, path), { ...eventData, googleEventId });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, path);
+    }
+  };
+
+  const updateEvent = async (id: string, eventUpdate: Partial<Omit<Event, 'id'>>) => {
+    if (!user) return;
+    const path = `users/${user.uid}/events/${id}`;
+    try {
+      const currentEvent = state.events.find(e => e.id === id);
+      if (accessToken && currentEvent?.googleEventId) {
+        try {
+          await updateCalendarEvent(accessToken, currentEvent.googleEventId, {
+            summary: eventUpdate.title || currentEvent.title,
+            description: eventUpdate.description || currentEvent.description || '',
+            start: { date: eventUpdate.date || currentEvent.date },
+            end: { date: eventUpdate.date || currentEvent.date },
+          });
+        } catch (error) {
+          console.error('Failed to update event in Google Calendar:', error);
+        }
+      }
+      await updateDoc(doc(db, path), eventUpdate);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
+  };
+
+  const deleteEvent = async (id: string) => {
+    if (!user) return;
+    const path = `users/${user.uid}/events/${id}`;
+    try {
+      const currentEvent = state.events.find(e => e.id === id);
+      if (accessToken && currentEvent?.googleEventId) {
+        try {
+          await deleteCalendarEvent(accessToken, currentEvent.googleEventId);
+        } catch (error) {
+          console.error('Failed to delete event from Google Calendar:', error);
+        }
+      }
+      await deleteDoc(doc(db, path));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
     }
   };
 
@@ -369,6 +437,9 @@ export function SASProvider({ children }: { children: ReactNode }) {
       updateDeadline,
       deleteDeadline,
       updateDeadlineStatus,
+      addEvent,
+      updateEvent,
+      deleteEvent,
       addNote,
       updateNote,
       deleteNote,
