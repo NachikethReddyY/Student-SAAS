@@ -24,13 +24,16 @@ import {
 } from 'date-fns';
 import { cn } from '../utils';
 import EventModal from './EventModal';
-import { Event } from '../types';
+import AssignmentModal from './AssignmentModal';
+import { Event, Deadline } from '../types';
 
 export default function CalendarView() {
-  const { deadlines, modules, events, addEvent, updateEvent, deleteEvent, accessToken, login } = useSAS();
+  const { deadlines, modules, events, addEvent, updateEvent, deleteEvent, addDeadline, updateDeadline, deleteDeadline, accessToken, login } = useSAS();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>();
+  const [selectedDeadline, setSelectedDeadline] = useState<Deadline | undefined>();
 
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
   const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
@@ -53,6 +56,11 @@ export default function CalendarView() {
   const handleEditEvent = (event: Event) => {
     setSelectedEvent(event);
     setIsEventModalOpen(true);
+  };
+
+  const handleEditDeadline = (deadline: Deadline) => {
+    setSelectedDeadline(deadline);
+    setIsAssignmentModalOpen(true);
   };
 
   const hasSyncIssue = (deadlines.some(d => !d.googleEventId) || events.some(e => !e.googleEventId)) && !!accessToken;
@@ -147,7 +155,10 @@ export default function CalendarView() {
                   {dayEvents.map(event => (
                     <div 
                       key={event.id}
-                      onClick={() => handleEditEvent(event)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditEvent(event);
+                      }}
                       className="px-2 py-1 rounded text-[10px] font-bold truncate cursor-pointer transition-transform hover:scale-[1.02] bg-zinc-100 text-zinc-700 border-l-2 border-zinc-400"
                     >
                       {event.startTime && <span className="mr-1 opacity-60 font-medium">{event.startTime}</span>}
@@ -160,6 +171,10 @@ export default function CalendarView() {
                     return (
                       <div 
                         key={deadline.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditDeadline(deadline);
+                        }}
                         className="px-2 py-1 rounded text-[10px] font-bold truncate cursor-pointer transition-transform hover:scale-[1.02]"
                         style={{ 
                           backgroundColor: `${module?.color}15`, 
@@ -190,6 +205,21 @@ export default function CalendarView() {
         }}
         initialData={selectedEvent}
         onDelete={deleteEvent}
+      />
+
+      <AssignmentModal
+        isOpen={isAssignmentModalOpen}
+        onClose={() => setIsAssignmentModalOpen(false)}
+        onSave={(data) => {
+          if (selectedDeadline) {
+            updateDeadline(selectedDeadline.id, data);
+          } else {
+            addDeadline(data);
+          }
+        }}
+        modules={modules}
+        initialData={selectedDeadline}
+        onDelete={deleteDeadline}
       />
     </div>
   );

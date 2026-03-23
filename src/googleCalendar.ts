@@ -17,6 +17,7 @@ interface GoogleCalendarEvent {
 const CALENDAR_API_BASE = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
 
 export async function createCalendarEvent(accessToken: string, event: GoogleCalendarEvent) {
+  console.log('Attempting to create Google Calendar event:', event);
   const response = await fetch(CALENDAR_API_BASE, {
     method: 'POST',
     headers: {
@@ -28,10 +29,13 @@ export async function createCalendarEvent(accessToken: string, event: GoogleCale
 
   if (!response.ok) {
     const error = await response.json();
+    console.error('Google Calendar API Error (Create):', error);
     throw new Error(error.error?.message || 'Failed to create calendar event');
   }
 
-  return await response.json();
+  const result = await response.json();
+  console.log('Successfully created Google Calendar event:', result.id);
+  return result;
 }
 
 export async function updateCalendarEvent(accessToken: string, eventId: string, event: GoogleCalendarEvent) {

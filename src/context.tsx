@@ -228,11 +228,15 @@ export function SASProvider({ children }: { children: ReactNode }) {
       let googleEventId: string | undefined;
       if (accessToken) {
         try {
+          const nextDay = new Date(deadline.dueDate);
+          nextDay.setDate(nextDay.getDate() + 1);
+          const endDayStr = nextDay.toISOString().split('T')[0];
+
           const event = await createCalendarEvent(accessToken, {
-            summary: deadline.title,
+            summary: `Deadline: ${deadline.title}`,
             description: deadline.description || '',
             start: { date: deadline.dueDate },
-            end: { date: deadline.dueDate },
+            end: { date: endDayStr },
           });
           googleEventId = event.id;
         } catch (error) {
@@ -252,11 +256,16 @@ export function SASProvider({ children }: { children: ReactNode }) {
       const currentDeadline = state.deadlines.find(d => d.id === id);
       if (accessToken && currentDeadline?.googleEventId) {
         try {
+          const dueDate = deadlineUpdate.dueDate || currentDeadline.dueDate;
+          const nextDay = new Date(dueDate);
+          nextDay.setDate(nextDay.getDate() + 1);
+          const endDayStr = nextDay.toISOString().split('T')[0];
+
           await updateCalendarEvent(accessToken, currentDeadline.googleEventId, {
-            summary: deadlineUpdate.title || currentDeadline.title,
+            summary: `Deadline: ${deadlineUpdate.title || currentDeadline.title}`,
             description: deadlineUpdate.description || currentDeadline.description || '',
-            start: { date: deadlineUpdate.dueDate || currentDeadline.dueDate },
-            end: { date: deadlineUpdate.dueDate || currentDeadline.dueDate },
+            start: { date: dueDate },
+            end: { date: endDayStr },
           });
         } catch (error) {
           console.error('Failed to update Google Calendar:', error);
@@ -303,11 +312,15 @@ export function SASProvider({ children }: { children: ReactNode }) {
       let googleEventId: string | undefined;
       if (accessToken) {
         try {
+          const nextDay = new Date(eventData.date);
+          nextDay.setDate(nextDay.getDate() + 1);
+          const endDayStr = nextDay.toISOString().split('T')[0];
+
           const calendarEvent = await createCalendarEvent(accessToken, {
             summary: eventData.title,
             description: eventData.description || '',
             start: { date: eventData.date },
-            end: { date: eventData.date },
+            end: { date: endDayStr },
           });
           googleEventId = calendarEvent.id;
         } catch (error) {
@@ -327,11 +340,16 @@ export function SASProvider({ children }: { children: ReactNode }) {
       const currentEvent = state.events.find(e => e.id === id);
       if (accessToken && currentEvent?.googleEventId) {
         try {
+          const eventDate = eventUpdate.date || currentEvent.date;
+          const nextDay = new Date(eventDate);
+          nextDay.setDate(nextDay.getDate() + 1);
+          const endDayStr = nextDay.toISOString().split('T')[0];
+
           await updateCalendarEvent(accessToken, currentEvent.googleEventId, {
             summary: eventUpdate.title || currentEvent.title,
             description: eventUpdate.description || currentEvent.description || '',
-            start: { date: eventUpdate.date || currentEvent.date },
-            end: { date: eventUpdate.date || currentEvent.date },
+            start: { date: eventDate },
+            end: { date: endDayStr },
           });
         } catch (error) {
           console.error('Failed to update event in Google Calendar:', error);
