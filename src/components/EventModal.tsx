@@ -26,8 +26,8 @@ export default function EventModal({ isOpen, onClose, onSave, initialData, onDel
   useEffect(() => {
     if (initialData) {
       setFormData({
-        title: initialData.title,
-        date: initialData.date,
+        title: initialData.title || '',
+        date: initialData.date || new Date().toISOString().split('T')[0],
         startTime: initialData.startTime || '',
         endTime: initialData.endTime || '',
         location: initialData.location || '',

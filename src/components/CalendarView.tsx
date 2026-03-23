@@ -34,6 +34,7 @@ export default function CalendarView() {
   const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | undefined>();
   const [selectedDeadline, setSelectedDeadline] = useState<Deadline | undefined>();
+  const [formDataForNewEvent, setFormDataForNewEvent] = useState<Partial<Event>>({});
 
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
   const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
@@ -128,17 +129,26 @@ export default function CalendarView() {
         {/* Calendar Grid */}
         <div className="grid grid-cols-7">
           {calendarDays.map((day, idx) => {
-            const dayDeadlines = deadlines.filter(d => isSameDay(new Date(d.dueDate), day));
-            const dayEvents = events.filter(e => isSameDay(new Date(e.date), day));
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const dayDeadlines = deadlines.filter(d => d.dueDate === dateStr);
+            const dayEvents = events.filter(e => e.date === dateStr);
             const isCurrentMonth = isSameMonth(day, monthStart);
             const isToday = isSameDay(day, new Date());
 
             return (
               <div 
                 key={idx} 
+                onClick={() => {
+                  if (isCurrentMonth) {
+                    setSelectedEvent(undefined);
+                    setSelectedDeadline(undefined);
+                    setFormDataForNewEvent({ date: dateStr });
+                    setIsEventModalOpen(true);
+                  }
+                }}
                 className={cn(
-                  "min-h-[140px] p-2 border-r border-b border-zinc-100 last:border-r-0 relative group transition-colors",
-                  !isCurrentMonth && "bg-zinc-50/50",
+                  "min-h-[140px] p-2 border-r border-b border-zinc-100 last:border-r-0 relative group transition-colors cursor-pointer",
+                  !isCurrentMonth && "bg-zinc-50/50 cursor-default",
                   isCurrentMonth && "hover:bg-zinc-50/30"
                 )}
               >
@@ -159,7 +169,7 @@ export default function CalendarView() {
                         e.stopPropagation();
                         handleEditEvent(event);
                       }}
-                      className="px-2 py-1 rounded text-[10px] font-bold truncate cursor-pointer transition-transform hover:scale-[1.02] bg-zinc-100 text-zinc-700 border-l-2 border-zinc-400"
+                      className="px-2 py-1 rounded text-[10px] font-bold truncate transition-transform hover:scale-[1.02] bg-zinc-100 text-zinc-700 border-l-2 border-zinc-400"
                     >
                       {event.startTime && <span className="mr-1 opacity-60 font-medium">{event.startTime}</span>}
                       {event.title}
@@ -175,7 +185,7 @@ export default function CalendarView() {
                           e.stopPropagation();
                           handleEditDeadline(deadline);
                         }}
-                        className="px-2 py-1 rounded text-[10px] font-bold truncate cursor-pointer transition-transform hover:scale-[1.02]"
+                        className="px-2 py-1 rounded text-[10px] font-bold truncate transition-transform hover:scale-[1.02]"
                         style={{ 
                           backgroundColor: `${module?.color}15`, 
                           color: module?.color,
@@ -203,7 +213,7 @@ export default function CalendarView() {
             addEvent(data);
           }
         }}
-        initialData={selectedEvent}
+        initialData={selectedEvent || (formDataForNewEvent as Event)}
         onDelete={deleteEvent}
       />
 
