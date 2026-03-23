@@ -36,6 +36,7 @@ export interface Deadline {
   priority: Priority;
   description?: string;
   tasks?: SubTask[];
+  googleEventId?: string;
 }
 
 export interface Note {

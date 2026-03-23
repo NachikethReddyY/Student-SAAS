@@ -19,7 +19,8 @@ import {
   setDoc,
   serverTimestamp
 } from 'firebase/firestore';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, User, GoogleAuthProvider } from 'firebase/auth';
+import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent } from './googleCalendar';
 
 enum OperationType {
   CREATE = 'create',
@@ -76,6 +77,7 @@ interface SASContextType extends SASState {
   user: User | null;
   loading: boolean;
   error: string | null;
+  accessToken: string | null;
   login: () => Promise<void>;
   logout: () => Promise<void>;
   addModule: (module: Omit<Module, 'id'>) => void;
@@ -98,6 +100,7 @@ export function SASProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(localStorage.getItem('google_access_token'));
   const [state, setState] = useState<SASState>({
     modules: [],
     deadlines: [],
@@ -154,7 +157,13 @@ export function SASProvider({ children }: { children: ReactNode }) {
   const login = async () => {
     setError(null);
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const token = credential?.accessToken || null;
+      if (token) {
+        setAccessToken(token);
+        localStorage.setItem('google_access_token', token);
+      }
     } catch (error: any) {
       console.error('Login error:', error);
       setError(error.message || 'An unknown error occurred during login.');
@@ -164,6 +173,8 @@ export function SASProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       await signOut(auth);
+      setAccessToken(null);
+      localStorage.removeItem('google_access_token');
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -206,7 +217,26 @@ export function SASProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const path = `users/${user.uid}/deadlines`;
     try {
-      await addDoc(collection(db, path), deadline);
+      let googleEventId: string | undefined;
+      
+      if (accessToken) {
+        try {
+          const event = await createCalendarEvent(accessToken, {
+            summary: deadline.title,
+            description: deadline.description || '',
+            start: { date: deadline.dueDate },
+            end: { date: deadline.dueDate },
+          });
+          googleEventId = event.id;
+        } catch (error) {
+          console.error('Failed to sync with Google Calendar:', error);
+        }
+      }
+
+      await addDoc(collection(db, path), {
+        ...deadline,
+        googleEventId
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, path);
     }
@@ -216,6 +246,19 @@ export function SASProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const path = `users/${user.uid}/deadlines/${id}`;
     try {
+      const currentDeadline = state.deadlines.find(d => d.id === id);
+      if (accessToken && currentDeadline?.googleEventId) {
+        try {
+          await updateCalendarEvent(accessToken, currentDeadline.googleEventId, {
+            summary: deadlineUpdate.title || currentDeadline.title,
+            description: deadlineUpdate.description || currentDeadline.description || '',
+            start: { date: deadlineUpdate.dueDate || currentDeadline.dueDate },
+            end: { date: deadlineUpdate.dueDate || currentDeadline.dueDate },
+          });
+        } catch (error) {
+          console.error('Failed to update Google Calendar:', error);
+        }
+      }
       await updateDoc(doc(db, path), deadlineUpdate);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, path);
@@ -226,6 +269,14 @@ export function SASProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const path = `users/${user.uid}/deadlines/${id}`;
     try {
+      const currentDeadline = state.deadlines.find(d => d.id === id);
+      if (accessToken && currentDeadline?.googleEventId) {
+        try {
+          await deleteCalendarEvent(accessToken, currentDeadline.googleEventId);
+        } catch (error) {
+          console.error('Failed to delete from Google Calendar:', error);
+        }
+      }
       await deleteDoc(doc(db, path));
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, path);
@@ -308,6 +359,7 @@ export function SASProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       error,
+      accessToken,
       login,
       logout,
       addModule,
